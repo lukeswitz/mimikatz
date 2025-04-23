@@ -18,6 +18,10 @@ jobs:
 
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v2
+
+    - name: Randomize IOC values
+      run: python scripts/randomize_ioc.py
+
     - name: Build solution for x64
       run: msbuild /p:Configuration=Release /p:Platform=x64 mimikatz.sln
 
