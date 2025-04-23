@@ -1,0 +1,58 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Visual Studio 2013
+      uses: microsoft/setup-msbuild@v1
+      with:
+        vs-version: 2013
+
+    - name: Run custom PowerShell script
+      run: |
+        $ntsecapiPath = "C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Include\ntsecapi.h"
+        (Get-Content $ntsecapiPath) | ForEach-Object { $_ -replace "^RtlDecryptMemory\($", "__stdcall RtlDecryptMemory(" } | Set-Content $ntsecapiPath
+
+    - name: Build solution for x64
+      run: msbuild /p:Configuration=Release /p:Platform=x64 mimikatz.sln
+
+    - name: Build solution for Win32
+      run: msbuild /p:Configuration=Release /p:Platform=Win32 mimikatz.sln
+
+    - name: Compress build artifacts
+      run: |
+        7z a -t7z -mx -ms=on mimikatz_trunk_x64.7z -xr@notrunk.lst .\x64 README.md kiwi_passwords.yar mimicom.idl
+        7z a -tzip -mx -mm=deflate -mpass=15 mimikatz_trunk_x64.zip -xr@notrunk.lst .\x64 README.md kiwi_passwords.yar mimicom.idl
+        7z a -pMimikatz -mhe=on -t7z -mx -ms=on mimikatz_trunk_password_x64.7z -xr@notrunk.lst .\x64 README.md kiwi_passwords.yar mimicom.idl
+        7z a -pMimikatz -tzip -mx -mm=deflate -mpass=15 mimikatz_trunk_password_x64.zip -xr@notrunk.lst .\x64 README.md kiwi_passwords.yar mimicom.idl
+        7z a -t7z -mx -ms=on mimikatz_trunk_Win32.7z -xr@notrunk.lst .\Win32 README.md kiwi_passwords.yar mimicom.idl
+        7z a -tzip -mx -mm=deflate -mpass=15 mimikatz_trunk_Win32.zip -xr@notrunk.lst .\Win32 README.md kiwi_passwords.yar mimicom.idl
+        7z a -pMimikatz -mhe=on -t7z -mx -ms=on mimikatz_trunk_password_Win32.7z -xr@notrunk.lst .\Win32 README.md kiwi_passwords.yar mimicom.idl
+        7z a -pMimikatz -tzip -mx -mm=deflate -mpass=15 mimikatz_trunk_password_Win32.zip -xr@notrunk.lst .\Win32 README.md kiwi_passwords.yar mimicom.idl
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: mimikatz_trunk
+        path: |
+          mimikatz_trunk_x64.7z
+          mimikatz_trunk_x64.zip
+          mimikatz_trunk_password_x64.7z
+          mimikatz_trunk_password_x64.zip
+          mimikatz_trunk_Win32.7z
+          mimikatz_trunk_Win32.zip
+          mimikatz_trunk_password_Win32.7z
+          mimikatz_trunk_password_Win32.zip
