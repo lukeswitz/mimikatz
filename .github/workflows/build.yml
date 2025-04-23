@@ -33,6 +33,17 @@ jobs:
     - name: Build solution for Win32
       run: msbuild /p:Configuration=Release /p:Platform=Win32 mimikatz.sln
 
+    - name: Build solution for Debug x64
+      run: msbuild /p:Configuration=Debug /p:Platform=x64 mimikatz.sln
+
+    - name: Build solution for Debug Win32
+      run: msbuild /p:Configuration=Debug /p:Platform=Win32 mimikatz.sln
+
+    - name: Run unit tests
+      run: |
+        # Add your unit test command here
+        echo "Running unit tests..."
+
     - name: Compress build artifacts
       run: |
         7z a -t7z -mx -ms=on mimikatz_trunk_x64.7z -xr@notrunk.lst .\x64 README.md kiwi_passwords.yar mimicom.idl
@@ -58,3 +69,8 @@ jobs:
           mimikatz_trunk_password_Win32.7z
           mimikatz_trunk_password_Win32.zip
         download: true
+
+    - name: Deploy build artifacts
+      run: |
+        # Add your deployment command here
+        echo "Deploying build artifacts..."
