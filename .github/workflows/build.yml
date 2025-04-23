@@ -16,17 +16,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Download Visual Studio 2013 installer
-      run: |
-        Invoke-WebRequest -Uri "https://download.microsoft.com/download/1/2/3/12345678-1234-1234-1234-123456789012/vs2013_installer.exe" -OutFile "vs2013_installer.exe"
-
-    - name: Run Visual Studio 2013 installer with custom installation
-      run: |
-        Start-Process -FilePath "vs2013_installer.exe" -ArgumentList "/CustomInstall" -Wait
-
-    - name: Ensure Microsoft Build Tools is selected during installation
-      run: |
-        Start-Process -FilePath "vs2013_installer.exe" -ArgumentList "/Features:MicrosoftBuildTools" -Wait
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v2
+      
 
     - name: Verify MSBuild 2013 installation
       run: |
