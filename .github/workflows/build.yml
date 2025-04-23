@@ -55,16 +55,4 @@ jobs:
         7z a -pMimikatz -mhe=on -t7z -mx -ms=on mimikatz_trunk_password_Win32.7z -xr@notrunk.lst .\Win32 README.md kiwi_passwords.yar mimicom.idl
         7z a -pMimikatz -tzip -mx -mm=deflate -mpass=15 mimikatz_trunk_password_Win32.zip -xr@notrunk.lst .\Win32 README.md kiwi_passwords.yar mimicom.idl
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3.1.2
-      with:
-        name: mimikatz_trunk
-        path: |
-          mimikatz_trunk_x64.7z
-          mimikatz_trunk_x64.zip
-          mimikatz_trunk_password_x64.7z
-          mimikatz_trunk_password_x64.zip
-          mimikatz_trunk_Win32.7z
-          mimikatz_trunk_Win32.zip
-          mimikatz_trunk_password_Win32.7z
-          mimikatz_trunk_password_Win32.zip
+
