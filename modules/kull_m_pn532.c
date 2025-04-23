@@ -155,6 +155,292 @@ BOOL kull_m_pn532_InListPassiveTarget(PKULL_M_PN532_COMM comm, const BYTE MaxTg,
 	return status;
 }
 
+BOOL kull_m_pn532_InListPassiveTarget_TypeB(PKULL_M_PN532_COMM comm, const BYTE MaxTg, PPN532_TARGET_TYPEB *pTarget)
+{
+    BOOL status = FALSE;
+    BYTE data[4], dataLen = 0;
+    BYTE responseData[PN532_MAX_LEN];
+    BYTE responseLen = sizeof(responseData);
+    
+    if(!comm || !pTarget)
+        return FALSE;
+        
+    // Prepare Type B command
+    data[dataLen++] = MaxTg;    // MaxTg
+    data[dataLen++] = 0x01;     // BrTy = 0x01 for Type B
+    
+    // Send InListPassiveTarget command
+    if(kull_m_pn532_CommandandTransfer(comm, PN532_COMMAND_INLISTPASSIVETARGET, data, dataLen, responseData, &responseLen))
+    {
+        if(responseLen >= 3)
+        {
+            const BYTE nbTg = responseData[0];
+            if(nbTg > 0 && nbTg <= MaxTg && responseLen > 10)
+            {
+                RtlZeroMemory(pTarget, sizeof(PN532_TARGET_TYPEB));
+                
+                // Parse Type B specific fields
+                pTarget->Idx = responseData[1];
+                pTarget->ATQB.Length = responseLen - 2;
+                
+                // Copy ATQB (Answer to Request Type B)
+                if(pTarget->ATQB.Length <= sizeof(pTarget->ATQB.Data))
+                {
+                    RtlCopyMemory(pTarget->ATQB.Data, &responseData[2], pTarget->ATQB.Length);
+                    status = TRUE;
+                }
+            }
+        }
+    }
+    
+    return status;
+}
+
+BOOL kull_m_pn532_InListPassiveTarget_FeliCa(PKULL_M_PN532_COMM comm, const BYTE MaxTg, PPN532_TARGET_FELICA *pTarget)
+{
+    BOOL status = FALSE;
+    BYTE data[6], dataLen = 0;
+    BYTE responseData[PN532_MAX_LEN];
+    BYTE responseLen = sizeof(responseData);
+    
+    if(!comm || !pTarget)
+        return FALSE;
+        
+    // Prepare FeliCa command
+    data[dataLen++] = MaxTg;    // MaxTg
+    data[dataLen++] = 0x02;     // BrTy = 0x02 for FeliCa 212kbps
+    
+    // Add FeliCa system code (0xFFFF = all systems)
+    data[dataLen++] = 0xFF;
+    data[dataLen++] = 0xFF;
+    
+    // Timeout
+    data[dataLen++] = 0x00;
+    
+    // Send InListPassiveTarget command
+    if(kull_m_pn532_CommandandTransfer(comm, PN532_COMMAND_INLISTPASSIVETARGET, data, dataLen, responseData, &responseLen))
+    {
+        if(responseLen >= 3)
+        {
+            const BYTE nbTg = responseData[0];
+            if(nbTg > 0 && nbTg <= MaxTg && responseLen > 20)
+            {
+                RtlZeroMemory(pTarget, sizeof(PN532_TARGET_FELICA));
+                
+                // Parse FeliCa specific fields
+                pTarget->Idx = responseData[1];
+                const BYTE *pData = &responseData[2];
+                
+                // IDm (Manufacturer ID) - 8 bytes
+                RtlCopyMemory(pTarget->IDm, pData, 8);
+                
+                // PMm (Manufacturer Parameter) - 8 bytes
+                RtlCopyMemory(pTarget->PMm, pData + 8, 8);
+                
+                // System code - 2 bytes (if available)
+                if(responseLen >= 20)
+                {
+                    pTarget->SystemCode[0] = pData[16];
+                    pTarget->SystemCode[1] = pData[17];
+                }
+                
+                status = TRUE;
+            }
+        }
+    }
+    
+    return status;
+}
+
+BOOL kull_m_pn532_DetectCardType(PKULL_M_PN532_COMM comm, PPN532_CARD_TYPE_INFO pCardTypeInfo)
+{
+    BOOL status = FALSE;
+    
+    if(!comm || !pCardTypeInfo)
+        return FALSE;
+    
+    RtlZeroMemory(pCardTypeInfo, sizeof(PN532_CARD_TYPE_INFO));
+    
+    // Try Type A
+    PN532_TARGET_TYPE_A targetA;
+    if(kull_m_pn532_InListPassiveTarget(comm, 1, 0, NULL, 0, &pCardTypeInfo->NbFound, &targetA))
+    {
+        if(pCardTypeInfo->NbFound > 0)
+        {
+            pCardTypeInfo->Type = PN532_CARD_TYPE_A;
+            RtlCopyMemory(&pCardTypeInfo->TypeA, &targetA, sizeof(targetA));
+            status = TRUE;
+        }
+    }
+    
+    // Try Type B if Type A not found
+    if(!status)
+    {
+        PN532_TARGET_TYPEB targetB;
+        if(kull_m_pn532_InListPassiveTarget_TypeB(comm, 1, &targetB))
+        {
+            pCardTypeInfo->Type = PN532_CARD_TYPE_B;
+            RtlCopyMemory(&pCardTypeInfo->TypeB, &targetB, sizeof(targetB));
+            pCardTypeInfo->NbFound = 1;
+            status = TRUE;
+        }
+    }
+    
+    // Try FeliCa if no other type found
+    if(!status)
+    {
+        PN532_TARGET_FELICA targetF;
+        if(kull_m_pn532_InListPassiveTarget_FeliCa(comm, 1, &targetF))
+        {
+            pCardTypeInfo->Type = PN532_CARD_TYPE_FELICA;
+            RtlCopyMemory(&pCardTypeInfo->FeliCa, &targetF, sizeof(targetF));
+            pCardTypeInfo->NbFound = 1;
+            status = TRUE;
+        }
+    }
+    
+    return status;
+}
+
+BOOL kull_m_pn532_ReadCardData(PKULL_M_PN532_COMM comm, PPN532_CARD_TYPE_INFO pCardTypeInfo, BYTE blockNumber, BYTE *pBlockData, BYTE blockLength)
+{
+    BOOL status = FALSE;
+    
+    if(!comm || !pCardTypeInfo || !pBlockData)
+        return FALSE;
+    
+    switch(pCardTypeInfo->Type)
+    {
+        case PN532_CARD_TYPE_A:
+            {
+                // For Type A cards, use MIFARE Classic authentication and read
+                // First byte of UID is used as Key A for demonstration
+                BYTE keyA[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+                
+                // Authenticate with the block
+                if(kull_m_pn532_Mifare_Classic_AuthBlock(comm, &pCardTypeInfo->TypeA, 0x60, blockNumber, keyA))
+                {
+                    // Read the data
+                    BYTE cmdRead[2] = {0x30, blockNumber}; // MIFARE Read command
+                    BYTE response[32];
+                    BYTE responseLen = sizeof(response);
+                    
+                    if(kull_m_pn532_DataExchange(comm, cmdRead, sizeof(cmdRead), response, &responseLen))
+                    {
+                        if(responseLen >= blockLength)
+                        {
+                            RtlCopyMemory(pBlockData, response, blockLength);
+                            status = TRUE;
+                        }
+                    }
+                }
+            }
+            break;
+            
+        case PN532_CARD_TYPE_B:
+            // Type B card reading requires specific APDU commands
+            // This is a simplified implementation
+            {
+                // ISO 14443-4 APDU for reading
+                BYTE apdu[7] = {0x00, 0xB0, 0x00, blockNumber, 0x00, blockLength, 0x00};
+                BYTE response[64];
+                BYTE responseLen = sizeof(response);
+                
+                if(kull_m_pn532_DataExchange(comm, apdu, sizeof(apdu)-1, response, &responseLen))
+                {
+                    if(responseLen >= blockLength + 2 && response[responseLen-2] == 0x90 && response[responseLen-1] == 0x00)
+                    {
+                        RtlCopyMemory(pBlockData, response, blockLength);
+                        status = TRUE;
+                    }
+                }
+            }
+            break;
+            
+        case PN532_CARD_TYPE_FELICA:
+            // FeliCa card reading
+            {
+                // FeliCa Read command
+                BYTE cmdRead[12 + 6] = {
+                    0x06, // Length of IDm (always 8)
+                    0x00, // Command code for Read Without Encryption
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // IDm will be filled
+                    0x01, // Number of services (1)
+                    0x0B, 0x00, // Service code 000B = read
+                    0x01, // Number of blocks (1)
+                    0x80, // Block list element with 2-byte block list
+                    blockNumber // Block number
+                };
+                
+                // Copy IDm
+                RtlCopyMemory(&cmdRead[2], pCardTypeInfo->FeliCa.IDm, 8);
+                
+                BYTE response[64];
+                BYTE responseLen = sizeof(response);
+                
+                if(kull_m_pn532_DataExchange(comm, cmdRead, sizeof(cmdRead), response, &responseLen))
+                {
+                    if(responseLen >= blockLength + 12) // Response code + IDm + status + data
+                    {
+                        RtlCopyMemory(pBlockData, response + 12, blockLength);
+                        status = TRUE;
+                    }
+                }
+            }
+            break;
+            
+        default:
+            // Unsupported card type
+            break;
+    }
+    
+    return status;
+}
+
+LPCWSTR kull_m_pn532_GetCardDescription(PPN532_CARD_TYPE_INFO pCardTypeInfo)
+{
+    if(!pCardTypeInfo)
+        return L"Unknown card";
+    
+    switch(pCardTypeInfo->Type)
+    {
+        case PN532_CARD_TYPE_A:
+            {
+                // MIFARE Classic detection logic
+                if(pCardTypeInfo->TypeA.ATQA.ATQA[0] == 0x04 && 
+                   pCardTypeInfo->TypeA.ATQA.ATQA[1] == 0x00 &&
+                   pCardTypeInfo->TypeA.SAK == 0x08)
+                    return L"MIFARE Classic 1K";
+                    
+                if(pCardTypeInfo->TypeA.ATQA.ATQA[0] == 0x02 && 
+                   pCardTypeInfo->TypeA.ATQA.ATQA[1] == 0x00 &&
+                   pCardTypeInfo->TypeA.SAK == 0x18)
+                    return L"MIFARE Classic 4K";
+                
+                // MIFARE Ultralight detection logic
+                if(pCardTypeInfo->TypeA.ATQA.ATQA[0] == 0x44 &&
+                   pCardTypeInfo->TypeA.ATQA.ATQA[1] == 0x00 &&
+                   pCardTypeInfo->TypeA.SAK == 0x00)
+                    return L"MIFARE Ultralight";
+                
+                // DESFire detection
+                if((pCardTypeInfo->TypeA.SAK & 0x20) == 0x20)
+                    return L"MIFARE DESFire";
+                    
+                return L"ISO 14443A card";
+            }
+            
+        case PN532_CARD_TYPE_B:
+            return L"ISO 14443B card";
+            
+        case PN532_CARD_TYPE_FELICA:
+            return L"FeliCa card";
+            
+        default:
+            return L"Unknown card type";
+    }
+}
+
 BOOL kull_m_pn532_InRelease(PKULL_M_PN532_COMM comm, const BYTE Tg)
 {
 	BOOL status = FALSE;

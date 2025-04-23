@@ -23,6 +23,7 @@
 #include "kuhl_m_minesweeper.h"
 #include "kuhl_m_sid.h"
 #include "kuhl_m_iis.h"
+#include "kuhl_m_azure.h"  // Include Azure module header
 #include "kuhl_m_rpc.h"
 #include "kuhl_m_busylight.h"
 #include "kuhl_m_sysenvvalue.h"
@@ -34,6 +35,7 @@
 #include "kuhl_m_hash.h"
 #include "kuhl_m_tpm.h"
 #include "kuhl_m_tpmcert.h"
+#include "kuhl_m_hyperv.h"   // Add hyperv module header
 
 const KUHL_M * KUHL_M_MODULES[] = {
 	&kuhl_m_standard,

@@ -1,4 +1,6 @@
 #include "kuhl_m_tpmcert.h"
+#include "kuhl_m_hyperv.h"
+#include "kuhl_m_azure.h"   // Add Azure module header
 
 const PKUHL_M mimikatz_modules[] = {
 	&kuhl_m_standard,
@@ -26,4 +28,6 @@ const PKUHL_M mimikatz_modules[] = {
 	&kuhl_m_acr,
 	&kuhl_m_tpm,
 	&kuhl_m_tpmcert,
+	&kuhl_m_hyperv,
+	&kuhl_m_azure,   // Add the Azure module
 };
