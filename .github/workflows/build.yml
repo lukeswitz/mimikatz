@@ -56,3 +56,4 @@ jobs:
           mimikatz_trunk_Win32.zip
           mimikatz_trunk_password_Win32.7z
           mimikatz_trunk_password_Win32.zip
+        download: true
