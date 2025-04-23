@@ -19,6 +19,14 @@ jobs:
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v2
 
+    - name: Install v141_xp build tools
+      run: |
+        vs_installer.exe modify --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools" --add Microsoft.VisualStudio.Component.VC.v141.xp --passive --norestart
+
+    - name: Install Microsoft.Cpp.Redirect.17.props
+      run: |
+        vs_installer.exe modify --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools" --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --passive --norestart
+
     - name: Build solution for x64
       run: msbuild /p:Configuration=Release /p:Platform=x64 mimikatz.sln
 

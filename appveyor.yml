@@ -7,6 +7,10 @@ platform:
 shallow_clone: true
 before_build:
 - ps: (Get-Content "C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Include\ntsecapi.h") | %{$_ -replace "^RtlDecryptMemory\($", "__stdcall RtlDecryptMemory("} | Set-Content "C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Include\ntsecapi.h"
+- cmd: >-
+    call "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" modify --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools" --add Microsoft.VisualStudio.Component.VC.v141.xp --passive --norestart
+- cmd: >-
+    call "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" modify --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools" --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --passive --norestart
 build:
   parallel: true
   verbosity: normal
