@@ -3,9 +3,22 @@ import time
 import re
 
 def get_current_timestamp():
+    """
+    Retrieve the current timestamp.
+
+    Returns:
+        str: The current timestamp as a string.
+    """
     return str(int(time.time()))
 
 def replace_ioc_values(file_path, timestamp):
+    """
+    Replace IOC values in the specified file with the given timestamp.
+
+    Args:
+        file_path (str): The path to the file where IOC values need to be replaced.
+        timestamp (str): The timestamp to replace IOC values with.
+    """
     with open(file_path, 'r') as file:
         content = file.read()
 
