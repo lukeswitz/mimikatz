@@ -19,11 +19,6 @@ jobs:
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v2
 
-    - name: Run custom PowerShell script
-      run: |
-        $ntsecapiPath = "C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Include\ntsecapi.h"
-        (Get-Content $ntsecapiPath) | ForEach-Object { $_ -replace "^RtlDecryptMemory\($", "__stdcall RtlDecryptMemory(" } | Set-Content $ntsecapiPath
-
     - name: Build solution for x64
       run: msbuild /p:Configuration=Release /p:Platform=x64 mimikatz.sln
 
