@@ -62,6 +62,12 @@
 #define PN532_CMD_Diagnose_AttentionRequestTest		0x06
 #define PN532_CMD_Diagnose_SelfAntennaTest			0x07
 
+// Card type definitions
+#define PN532_CARD_TYPE_UNKNOWN  0x00
+#define PN532_CARD_TYPE_A        0x01
+#define PN532_CARD_TYPE_B        0x02
+#define PN532_CARD_TYPE_FELICA   0x03
+
 typedef BOOL (CALLBACK * PKULL_M_PN532_COMM_CALLBACK) (const BYTE *pbData, const UINT16 cbData, BYTE *pbResult, UINT16 *cbResult, LPVOID suppdata);
 
 typedef struct _PN532_TARGET_TYPE_A {
@@ -73,6 +79,42 @@ typedef struct _PN532_TARGET_TYPE_A {
 	BYTE ATSLength;
 	PBYTE ATS;
 } PN532_TARGET_TYPE_A, *PPN532_TARGET_TYPE_A;
+
+// Type B card structures
+typedef struct _PN532_TARGET_TYPEB_ATQB {
+    BYTE Length;
+    BYTE Data[32]; // ATQB data
+} PN532_TARGET_TYPEB_ATQB, *PPN532_TARGET_TYPEB_ATQB;
+
+typedef struct _PN532_TARGET_TYPEB_ATTRIB {
+    BYTE Length;
+    BYTE Data[64]; // ATTRIB data
+} PN532_TARGET_TYPEB_ATTRIB, *PPN532_TARGET_TYPEB_ATTRIB;
+
+typedef struct _PN532_TARGET_TYPEB {
+    BYTE Idx;
+    PN532_TARGET_TYPEB_ATQB ATQB;
+    PN532_TARGET_TYPEB_ATTRIB ATTRIB;
+} PN532_TARGET_TYPEB, *PPN532_TARGET_TYPEB;
+
+// FeliCa card structures
+typedef struct _PN532_TARGET_FELICA {
+    BYTE Idx;
+    BYTE IDm[8];      // Manufacturer ID
+    BYTE PMm[8];      // Manufacturer Parameter
+    BYTE SystemCode[2]; // System Code
+} PN532_TARGET_FELICA, *PPN532_TARGET_FELICA;
+
+// Card type information structure
+typedef struct _PN532_CARD_TYPE_INFO {
+    BYTE Type;
+    BYTE NbFound;
+    union {
+        PN532_TARGET_TYPE_A TypeA;
+        PN532_TARGET_TYPEB TypeB;
+        PN532_TARGET_FELICA FeliCa;
+    };
+} PN532_CARD_TYPE_INFO, *PPN532_CARD_TYPE_INFO;
 
 typedef struct _PN532_TARGET {
 	BYTE Tg;
@@ -118,3 +160,10 @@ BOOL kull_m_pn532_Mifare_Classic_AuthBlock(PKULL_M_PN532_COMM comm, PPN532_TARGE
 BOOL kull_m_pn532_Mifare_Classic_ReadBlock(PKULL_M_PN532_COMM comm, PPN532_TARGET_TYPE_A target, const BYTE blockId, PMIFARE_CLASSIC_RAW_BLOCK block);
 BOOL kull_m_pn532_Mifare_Classic_ReadSector(PKULL_M_PN532_COMM comm, PPN532_TARGET_TYPE_A target, const BYTE sectorId, PMIFARE_CLASSIC_RAW_SECTOR sector);
 BOOL kull_m_pn532_Mifare_Classic_ReadSectorWithKey(PKULL_M_PN532_COMM comm, PPN532_TARGET_TYPE_A target, const BYTE sectorId, const BYTE authKey, const BYTE key[MIFARE_CLASSIC_KEY_SIZE], PMIFARE_CLASSIC_RAW_SECTOR sector);
+
+// Extended NFC functions
+BOOL kull_m_pn532_InListPassiveTarget_TypeB(PKULL_M_PN532_COMM comm, const BYTE MaxTg, PPN532_TARGET_TYPEB *pTarget);
+BOOL kull_m_pn532_InListPassiveTarget_FeliCa(PKULL_M_PN532_COMM comm, const BYTE MaxTg, PPN532_TARGET_FELICA *pTarget);
+BOOL kull_m_pn532_DetectCardType(PKULL_M_PN532_COMM comm, PPN532_CARD_TYPE_INFO pCardTypeInfo);
+BOOL kull_m_pn532_ReadCardData(PKULL_M_PN532_COMM comm, PPN532_CARD_TYPE_INFO pCardTypeInfo, BYTE blockNumber, BYTE *pBlockData, BYTE blockLength);
+LPCWSTR kull_m_pn532_GetCardDescription(PPN532_CARD_TYPE_INFO pCardTypeInfo);

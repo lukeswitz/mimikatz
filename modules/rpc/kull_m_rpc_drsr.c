@@ -403,9 +403,66 @@ void kull_m_rpc_drsr_free_DRS_MSG_DCINFOREPLY_data(DWORD dcOutVersion, DRS_MSG_D
 			kull_m_rpc_ms_drsr_FreeDRS_MSG_DCINFOREPLY_V2(&reply->V2);
 			break;
 		case 1:
+			// Version 1 of DRS_MSG_DCINFOREPLY - simpler version with less data
+			if(reply->V1.rItems)
+			{
+				DWORD i;
+				// Free individual strings in each item
+				for(i = 0; i < reply->V1.cItems; i++)
+				{
+					if(reply->V1.rItems[i].DnsHostName)
+						MIDL_user_free(reply->V1.rItems[i].DnsHostName);
+					if(reply->V1.rItems[i].NetbiosName)
+						MIDL_user_free(reply->V1.rItems[i].NetbiosName);
+					if(reply->V1.rItems[i].SiteName)
+						MIDL_user_free(reply->V1.rItems[i].SiteName);
+				}
+				// Free the array itself
+				MIDL_user_free(reply->V1.rItems);
+			}
+			break;
 		case 3:
+			// Version 3 of DRS_MSG_DCINFOREPLY - extended version
+			if(reply->V3.rItems)
+			{
+				DWORD i;
+				// Free individual strings in each item
+				for(i = 0; i < reply->V3.cItems; i++)
+				{
+					if(reply->V3.rItems[i].DnsHostName)
+						MIDL_user_free(reply->V3.rItems[i].DnsHostName);
+					if(reply->V3.rItems[i].NetbiosName)
+						MIDL_user_free(reply->V3.rItems[i].NetbiosName);
+					if(reply->V3.rItems[i].SiteName)
+						MIDL_user_free(reply->V3.rItems[i].SiteName);
+					if(reply->V3.rItems[i].SiteObjectName)
+						MIDL_user_free(reply->V3.rItems[i].SiteObjectName);
+					if(reply->V3.rItems[i].ComputerObjectName)
+						MIDL_user_free(reply->V3.rItems[i].ComputerObjectName);
+					if(reply->V3.rItems[i].ServerObjectName)
+						MIDL_user_free(reply->V3.rItems[i].ServerObjectName);
+					if(reply->V3.rItems[i].NtdsDsaObjectName)
+						MIDL_user_free(reply->V3.rItems[i].NtdsDsaObjectName);
+					// Free any additional fields specific to V3
+					if(reply->V3.rItems[i].TransportAddressNames)
+					{
+						DWORD j;
+						for(j = 0; j < reply->V3.rItems[i].cTransportAddresses; j++)
+						{
+							if(reply->V3.rItems[i].TransportAddressNames[j])
+								MIDL_user_free(reply->V3.rItems[i].TransportAddressNames[j]);
+						}
+						MIDL_user_free(reply->V3.rItems[i].TransportAddressNames);
+					}
+				}
+				// Free the array itself
+				MIDL_user_free(reply->V3.rItems);
+			}
+			break;
 		case 0xffffffff:
-			PRINT_ERROR(L"TODO (maybe?)\n");
+			// Special error case - nothing to free except the error information
+			if(reply->V1.rItems) // Using V1 as a generic container for error info
+				MIDL_user_free(reply->V1.rItems);
 			break;
 		default:
 			PRINT_ERROR(L"dcOutVersion not valid (0x%08x - %u)\n", dcOutVersion, dcOutVersion);
