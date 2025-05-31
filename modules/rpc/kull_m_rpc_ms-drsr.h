@@ -342,6 +342,91 @@ typedef union _DRS_MSG_ADDENTRYREPLY {
 	DRS_MSG_ADDENTRYREPLY_V2 V2;
 } DRS_MSG_ADDENTRYREPLY;
 
+// Structure for KCC execution request messages
+typedef struct _DRS_MSG_KCC_EXECUTE {
+    DWORD dwTaskID;      // Task identifier for KCC execution
+    DWORD dwFlags;       // Control flags for execution
+} DRS_MSG_KCC_EXECUTE, *PDRS_MSG_KCC_EXECUTE;
+
+// Structure to hold DC topology information
+typedef struct _DRS_TOPOLOGY_INFO {
+    DWORD cSites;           // Number of sites in the forest
+    DWORD cDCs;             // Number of domain controllers
+    LPWSTR* pSiteNames;     // Array of site names
+    LPWSTR* pDCNames;       // Array of DC names
+    LPWSTR* pDnsNames;      // Array of DNS names for DCs
+    DWORD* pdwSiteIds;      // Array of site IDs
+} DRS_TOPOLOGY_INFO, *PDRS_TOPOLOGY_INFO;
+
+// Constants for DRS operation logging
+#define DRS_LOG_LEVEL_NONE     0
+#define DRS_LOG_LEVEL_ERROR    1
+#define DRS_LOG_LEVEL_WARNING  2
+#define DRS_LOG_LEVEL_INFO     3
+#define DRS_LOG_LEVEL_VERBOSE  4
+#define DRS_LOG_LEVEL_DEBUG    5
+
+// Constants for replication flags (expanded from Microsoft docs)
+#define DRS_ASYNC_OP                   0x00000001
+#define DRS_GETCHG_CHECK               0x00000002
+#define DRS_UPDATE_NOTIFICATION        0x00000004
+#define DRS_ADD_REF                    0x00000008
+#define DRS_SYNC_ALL                   0x00000010
+#define DRS_DEL_REF                    0x00000020
+#define DRS_WRIT_REP                   0x00000040
+#define DRS_INIT_SYNC                  0x00000080
+#define DRS_PER_SYNC                   0x00000100
+#define DRS_MAIL_REP                   0x00000200
+#define DRS_ASYNC_REP                  0x00000400
+#define DRS_IGNORE_ERROR               0x00000800
+#define DRS_CRITICAL_ONLY              0x00001000
+#define DRS_GET_ANC                    0x00002000
+#define DRS_GET_NC_SIZE                0x00004000
+#define DRS_LOCAL_ONLY                 0x00008000
+#define DRS_NONGC_RO_REP               0x00010000
+#define DRS_SYNC_BYNAME                0x00020000
+#define DRS_REF_OK                     0x00040000
+#define DRS_FULL_SYNC_NOW              0x00080000
+#define DRS_NO_SOURCE                  0x00100000
+#define DRS_FULL_SYNC_IN_PROGRESS      0x00200000
+#define DRS_FULL_SYNC_PACKET           0x00400000
+#define DRS_SYNC_REQUEUE               0x00800000
+#define DRS_SYNC_URGENT                0x01000000
+#define DRS_REF_GCSPN                  0x02000000
+#define DRS_NO_DISCARD                 0x04000000
+#define DRS_NEVER_SYNCED               0x08000000
+#define DRS_SPECIAL_SECRET_PROCESSING  0x10000000
+#define DRS_INIT_SYNC_NOW              0x20000000
+#define DRS_PREEMPTED                  0x40000000
+#define DRS_SYNC_FORCED                0x80000000
+
+// Common attribute types (expanded)
+#define ATT_OBJECT_SID                 0x00000590
+#define ATT_ACCOUNT_NAME               0x00000612
+#define ATT_SAM_ACCOUNT_NAME           0x00000601
+#define ATT_USER_PRINCIPAL_NAME        0x0000059A
+#define ATT_OBJECT_CATEGORY            0x0000000C
+#define ATT_OBJECT_CLASS               0x0000000D
+#define ATT_NT_SECURITY_DESCRIPTOR     0x00000031
+#define ATT_UNICODE_PWD                0x0000009E
+#define ATT_DBCS_PWD                   0x0000009D
+#define ATT_SUPPLEMENTAL_CREDENTIALS   0x000007D1
+#define ATT_PRIMARY_GROUP_ID           0x00000592
+#define ATT_ACCOUNT_EXPIRES            0x00000579
+
+// Options for Name Formats in CrackNames function
+#define DS_UNKNOWN_NAME                0
+#define DS_FQDN_1779_NAME              1
+#define DS_NT4_ACCOUNT_NAME            2
+#define DS_DISPLAY_NAME                3
+#define DS_UNIQUE_ID_NAME              6
+#define DS_CANONICAL_NAME              7
+#define DS_USER_PRINCIPAL_NAME         8
+#define DS_CANONICAL_NAME_EX           9
+#define DS_SERVICE_PRINCIPAL_NAME      10
+#define DS_SID_OR_SID_HISTORY_NAME     11
+#define DS_DNS_DOMAIN_NAME             12
+
 extern RPC_IF_HANDLE drsuapi_v4_0_c_ifspec;
 extern RPC_IF_HANDLE drsuapi_v4_0_s_ifspec;
 
@@ -354,15 +439,52 @@ ULONG IDL_DRSCrackNames(DRS_HANDLE hDrs, DWORD dwInVersion, DRS_MSG_CRACKREQ *pm
 ULONG IDL_DRSDomainControllerInfo(DRS_HANDLE hDrs, DWORD dwInVersion, DRS_MSG_DCINFOREQ *pmsgIn, DWORD *pdwOutVersion, DRS_MSG_DCINFOREPLY *pmsgOut);
 ULONG IDL_DRSAddEntry(DRS_HANDLE hDrs, DWORD dwInVersion, DRS_MSG_ADDENTRYREQ *pmsgIn, DWORD *pdwOutVersion, DRS_MSG_ADDENTRYREPLY *pmsgOut);
 
+// Additional DRS function for extended operations
+ULONG IDL_DRSExecuteKCC(DRS_HANDLE hDrs, DWORD dwInVersion, DRS_MSG_KCC_EXECUTE *pmsgIn);
+
+// Additional helper functions for DRS operations
+ULONG DRS_GetTopology(DRS_HANDLE hDrs, LPWSTR siteName, PDRS_TOPOLOGY_INFO* ppTopologyInfo);
+BOOL DRS_ParseObjectAttributes(ENTINF* pEntInf, LPWSTR objectDN, SIZE_T objectDNSize, PBYTE* ppObjectSid, PDWORD pcbObjectSid);
+ULONG DRS_SetOperationLogging(PHANDLE phLogFile, LPWSTR logFilePath, DWORD logLevel);
+
+// Extended function declarations
+ULONG DRS_BindWithCredentials(LPWSTR server, LPWSTR domain, LPCWSTR username, LPCWSTR password, DRS_HANDLE *phDrs);
+ULONG DRS_BindWithSpn(LPWSTR server, LPWSTR domain, LPWSTR targetSpn, DRS_HANDLE *phDrs);
+ULONG DRS_EnumAllObjects(DRS_HANDLE hDrs, LPWSTR namingContext, LPWSTR filter, HANDLE hOutFile, DWORD dwFlags);
+ULONG DRS_FindUser(DRS_HANDLE hDrs, LPCWSTR userName, ENTINF** ppEntInf);
+ULONG DRS_GetUserAccountControl(DRS_HANDLE hDrs, LPCWSTR userName, PDWORD pdwUAC);
+ULONG DRS_ConvertSidToUsername(DRS_HANDLE hDrs, PSID pSid, LPWSTR *ppName);
+
+// Additional helper functions
+BOOL DRS_WriteLogEntry(HANDLE hLogFile, DWORD logLevel, LPCWSTR format, ...);
+void DRS_FreeEntInf(ENTINF *pEntInf);
+BOOL DRS_CompareAttIds(ATTRTYP attId1, ATTRTYP attId2);
+BOOL DRS_IsAdminObject(ENTINF *pEntInf);
+
+// Helper functions for DRS operations
+ULONG DRS_Bind(LPWSTR server, LPWSTR domain, DRS_HANDLE *phDrs);
+BOOL DRS_CheckCapability(DRS_EXTENSIONS *pServerExtensions, DWORD dwCapability);
+ULONG DRS_Unbind(DRS_HANDLE *phDrs);
+ULONG DRS_GetAccountPasswords(DRS_HANDLE hDrs, LPWSTR userName, PBYTE* ppResults, PDWORD pcbResults);
+
+// Additional cleanup functions
 void DRS_MSG_GETCHGREPLY_V6_Free(handle_t _MidlEsHandle, DRS_MSG_GETCHGREPLY_V6 * _pType);
 void DRS_MSG_CRACKREPLY_V1_Free(handle_t _MidlEsHandle, DRS_MSG_CRACKREPLY_V1 * _pType);
 void DRS_MSG_DCINFOREPLY_V2_Free(handle_t _MidlEsHandle, DRS_MSG_DCINFOREPLY_V2 * _pType);
 void DRS_MSG_ADDENTRYREPLY_V2_Free(handle_t _MidlEsHandle, DRS_MSG_ADDENTRYREPLY_V2 * _pType);
+void DRS_MSG_KCC_EXECUTE_Free(handle_t _MidlEsHandle, DRS_MSG_KCC_EXECUTE* _pType);
+void DRS_TOPOLOGY_INFO_Free(PDRS_TOPOLOGY_INFO pTopology);
+
+// ARM64 Initialization
+#if defined(_M_ARM64)
+void IDL_DRS_ARM64_Init(void);
+#endif
 
 #define kull_m_rpc_ms_drsr_FreeDRS_MSG_GETCHGREPLY_V6(pObject) kull_m_rpc_Generic_Free(pObject, (PGENERIC_RPC_FREE) DRS_MSG_GETCHGREPLY_V6_Free)
 #define kull_m_rpc_ms_drsr_FreeDRS_MSG_CRACKREPLY_V1(pObject) kull_m_rpc_Generic_Free(pObject, (PGENERIC_RPC_FREE) DRS_MSG_CRACKREPLY_V1_Free)
 #define kull_m_rpc_ms_drsr_FreeDRS_MSG_DCINFOREPLY_V2(pObject) kull_m_rpc_Generic_Free(pObject, (PGENERIC_RPC_FREE) DRS_MSG_DCINFOREPLY_V2_Free)
 #define kull_m_rpc_ms_drsr_FreeDRS_MSG_ADDENTRYREPLY_V2(pObject) kull_m_rpc_Generic_Free(pObject, (PGENERIC_RPC_FREE) DRS_MSG_ADDENTRYREPLY_V2_Free)
+#define kull_m_rpc_ms_drsr_FreeDRS_MSG_KCC_EXECUTE(pObject) kull_m_rpc_Generic_Free(pObject, (PGENERIC_RPC_FREE) DRS_MSG_KCC_EXECUTE_Free)
 
 void __RPC_USER SRV_DRS_HANDLE_rundown(DRS_HANDLE hDrs);
 ULONG SRV_IDL_DRSBind(handle_t rpc_handle, UUID *puuidClientDsa, DRS_EXTENSIONS *pextClient, DRS_EXTENSIONS **ppextServer, DRS_HANDLE *phDrs);

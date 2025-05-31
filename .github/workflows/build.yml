@@ -1,0 +1,51 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Randomize IOC values
+      run: python scripts/randomize_ioc.py
+
+    - name: Build solution for x64
+      run: msbuild /p:Configuration=Release /p:Platform=x64 mimikatz.sln
+
+    - name: Build solution for Win32
+      run: msbuild /p:Configuration=Release /p:Platform=Win32 mimikatz.sln
+
+    - name: Build solution for Debug x64
+      run: msbuild /p:Configuration=Debug /p:Platform=x64 mimikatz.sln
+
+    - name: Build solution for Debug Win32
+      run: msbuild /p:Configuration=Debug /p:Platform=Win32 mimikatz.sln
+
+    - name: Run unit tests
+      run: |
+        # Add your unit test command here
+        echo "Running unit tests..."
+
+    - name: Compress build artifacts
+      run: |
+        7z a -t7z -mx -ms=on mimikatz_trunk_x64.7z -xr@notrunk.lst .\x64 README.md kiwi_passwords.yar mimicom.idl
+        7z a -tzip -mx -mm=deflate -mpass=15 mimikatz_trunk_x64.zip -xr@notrunk.lst .\x64 README.md kiwi_passwords.yar mimicom.idl
+        7z a -pMimikatz -mhe=on -t7z -mx -ms=on mimikatz_trunk_password_x64.7z -xr@notrunk.lst .\x64 README.md kiwi_passwords.yar mimicom.idl
+        7z a -pMimikatz -tzip -mx -mm=deflate -mpass=15 mimikatz_trunk_password_x64.zip -xr@notrunk.lst .\x64 README.md kiwi_passwords.yar mimicom.idl
+        7z a -t7z -mx -ms=on mimikatz_trunk_Win32.7z -xr@notrunk.lst .\Win32 README.md kiwi_passwords.yar mimicom.idl
+        7z a -tzip -mx -mm=deflate -mpass=15 mimikatz_trunk_Win32.zip -xr@notrunk.lst .\Win32 README.md kiwi_passwords.yar mimicom.idl
+        7z a -pMimikatz -mhe=on -t7z -mx -ms=on mimikatz_trunk_password_Win32.7z -xr@notrunk.lst .\Win32 README.md kiwi_passwords.yar mimicom.idl
+        7z a -pMimikatz -tzip -mx -mm=deflate -mpass=15 mimikatz_trunk_password_Win32.zip -xr@notrunk.lst .\Win32 README.md kiwi_passwords.yar mimicom.idl

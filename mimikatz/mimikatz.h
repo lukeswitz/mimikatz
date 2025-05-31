@@ -21,6 +21,9 @@
 #include "modules/kuhl_m_token.h"
 #include "modules/kuhl_m_vault.h"
 #include "modules/kuhl_m_minesweeper.h"
+#include "modules/kuhl_m_sid.h"
+#include "modules/kuhl_m_azure.h"  // Include the Azure module header
+
 #if defined(NET_MODULE)
 #include "modules/kuhl_m_net.h"
 #endif
